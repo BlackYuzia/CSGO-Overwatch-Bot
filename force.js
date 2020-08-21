@@ -12,6 +12,8 @@ const TeamDamage = require("./detectors/teamDamage.js");
 
 const config = require("./config.json");
 
+let playersList = [];
+
 let data = {
 	curcasetempdata: {
 		aimbot_infractions: [],
@@ -68,6 +70,51 @@ getResponse().then((result) => {
 		demoFile.gameEvents.on("round_freeze_end", getPlayerIndex);
 
 		function getPlayerIndex() {
+			// Dirty check players
+			// todo: move all of this in another file for get info about demo
+			demoFile.players.forEach(player => {
+				if (player.steamId === "BOT") return;
+
+				const info = player.userInfo;
+				if (!info) return;
+
+				const steamID = new SteamID(player.steamId).getSteamID64()
+
+				const find = playersList.find(player => player.steamID === steamID)
+				if (find) {
+					const index = playersList.indexOf(find);
+
+					newData = {
+						nickname: info.name,
+						steamID: steamID,
+						kills: player.kills,
+						assists: player.assists,
+						deaths: player.deaths,
+						score: player.score,
+						mvps: player.mvps,
+						teamName: player.team ? player.team.teamName : null,
+						// isBot: info.fakePlayer,
+						// userID: info.userId,
+					};
+
+					return playersList[index] = newData;
+				};
+
+				playersList.push(
+					{
+						nickname: info.name,
+						steamID: steamID,
+						kills: player.kills,
+						assists: player.assists,
+						deaths: player.deaths,
+						score: player.score,
+						mvps: player.mvps,
+						teamName: player.team ? player.team.teamName : null,
+						// isBot: info.fakePlayer,
+						// userID: info.userId,
+					}
+				)
+			})
 			playerIndex = demoFile.players.filter(p => p.userInfo !== null).map(p => p.steamId === "BOT" ? p.steamId : new SteamID(p.steamId).getSteamID64()).indexOf(sid.getSteamID64());
 		}
 
@@ -111,6 +158,24 @@ getResponse().then((result) => {
 			console.log("	TeamDamage: " + data.curcasetempdata.teamDamage_infractions);
 			console.log("	Other: 0");
 			console.log("	Griefing: " + data.curcasetempdata.AFKing_infractions.length);
+
+			console.log("Users Info:");
+
+			playersList = playersList.sort((a, b) => b.score - a.score);
+
+			console.log("Team - CT");
+			playersList
+				.filter(p => p.teamName === "CT")
+				.forEach(p => {
+					console.log(`${p.steamID} - ${p.nickname} - [kills: ${p.kills} | assists: ${p.assists} | deaths: ${p.deaths} | mvps: ${p.mvps} | score: ${p.score}]`);
+				})
+			console.log("Team - T");
+			playersList
+				.filter(p => p.teamName === "TERRORIST")
+				.forEach(p => {
+					console.log(`${p.steamID} - ${p.nickname} - [kills: ${p.kills} | assists: ${p.assists} | deaths: ${p.deaths} | mvps: ${p.mvps} | score: ${p.score}]`);
+				})
+
 		});
 	});
 });
